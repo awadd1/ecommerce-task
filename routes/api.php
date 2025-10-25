@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\OrderController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,34 +17,55 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
+// Authentication routes
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+//product routes (anyone can view products)
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{product}', [ProductController::class, 'show']);
 
+//category routes (anyone can view categories)
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/categories/{category}', [CategoryController::class, 'show']);
+
+
+// Protected routes
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Auth routes
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
     });
 
-
-     Route::middleware('role:admin')->group(function () {
-        Route::get('/admin-only', function () {
-            return response()->json(['message' => 'Admin access granted']);
-        });
+    //category routes (admin only)
+    Route::middleware('role:admin')->group(function () {
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::put('/categories/{category}', [CategoryController::class, 'update']);
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+    });
+    //Product routes (admin and seller only)
+    Route::middleware('role:admin,seller')->group(function () {
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::put('/products/{product}', [ProductController::class, 'update']);
+        Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     });
 
-    Route::middleware('role:seller,admin')->group(function () {
-        Route::get('/seller-admin', function () {
-            return response()->json(['message' => 'Seller/Admin access granted']);
-        });
-    });
+    // Order routes
+    Route::prefix('orders')->group(function () {
 
-    Route::middleware('role:customer')->group(function () {
-        Route::get('/customer-only', function () {
-            return response()->json(['message' => 'Customer access granted']);
+        Route::get('/', [OrderController::class, 'index']);
+        Route::post('/', [OrderController::class, 'store']);
+        Route::get('/{order}', [OrderController::class, 'show']);
+
+        Route::post('/{order}/cancel', [OrderController::class, 'cancel']);
+
+        Route::middleware('role:admin,seller')->group(function () {
+            Route::put('/{order}/status', [OrderController::class, 'updateStatus']);
         });
     });
 });
