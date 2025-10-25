@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -68,4 +69,12 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{order}/status', [OrderController::class, 'updateStatus']);
         });
     });
+});
+
+Route::middleware(['auth:sanctum', 'role:admin,seller'])->prefix('warehouse')->group(function () {
+    Route::post('/adjust-stock', [WarehouseController::class, 'adjustStock']);
+    Route::get('/transactions', [WarehouseController::class, 'getAllTransactions']);
+    Route::get('/products/{product}/history', [WarehouseController::class, 'getProductHistory']);
+    Route::get('/low-stock', [WarehouseController::class, 'getLowStockProducts']);
+    Route::get('/summary', [WarehouseController::class, 'getStockSummary']);
 });

@@ -10,10 +10,10 @@ trait HasRoles
   public function hasRole(UserRole|string $role): bool
   {
     if ($role instanceof UserRole) {
-      return $this->role === $role->value;
+      return $this->role->value === $role->value;
     }
 
-    return $this->role === $role;
+    return $this->role->value === $role;
   }
 
   public function hasAnyRole(array $roles): bool
@@ -42,4 +42,11 @@ trait HasRoles
     return $this->hasRole(UserRole::CUSTOMER);
   }
 
+  public function canManageProducts(): bool
+  {
+    return in_array($this->role->value, [
+      UserRole::ADMIN->value,
+      UserRole::SELLER->value
+    ]);
+  }
 }

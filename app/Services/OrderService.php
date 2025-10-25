@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Enums\WarehouseTransactionType;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -38,9 +39,16 @@ class OrderService
           'price' => $product->price,
         ]);
 
-        $product->decreaseStock($item['quantity']);
+        $product->recordTransaction(
+          type: WarehouseTransactionType::ORDER_DEDUCTION,
+          quantity: $item['quantity'],
+          userId: $userId,
+          orderId: $order->id,
+          notes: "Stock deducted for order #{$order->order_number}"
+        );
         $totalAmount += $product->price * $item['quantity'];
       }
+
       $order->update(['total_amount' => $totalAmount]);
       return $order->load(['items.product', 'user']);
     });
@@ -69,13 +77,18 @@ class OrderService
     return DB::transaction(function () use ($order, $notes) {
 
       foreach ($order->items as $item) {
-        $item->product->increaseStock($item->quantity);
+        $item->product->recordTransaction(
+          type: WarehouseTransactionType::ORDER_RETURN,
+          quantity: $item->quantity,
+          orderId: $order->id,
+          notes: "Stock returned from cancelled order #{$order->order_number}"
+        );
       }
 
       $order->update([
         'status' => OrderStatus::CANCELLED,
         'notes' => $notes ?? $order->notes,
-      ]);      
+      ]);
 
       return $order->fresh(['items.product', 'user']);
     });
