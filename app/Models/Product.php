@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\WarehouseTransactionType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ class Product extends Model
         'stock',
         'is_active',
         'category_id',
+        'user_id',
     ];
 
     protected $casts = [
@@ -65,4 +67,38 @@ class Product extends Model
     {
         $this->increment('stock', $quantity);
     }
+
+    public function warehouseTransactions(): HasMany
+    {
+        return $this->hasMany(WarehouseTransaction::class);
+    }
+
+    public function recordTransaction(
+        WarehouseTransactionType $type,
+        int $quantity,
+        ?int $userId = null,
+        ?int $orderId = null,
+        ?string $notes = null
+    ): WarehouseTransaction {
+        $stockBefore = $this->stock;
+
+        if ($type->isDeduction()) {
+            $this->decrement('stock', $quantity);
+        } else {
+            $this->increment('stock', $quantity);
+        }
+
+        $this->refresh();
+
+        return $this->warehouseTransactions()->create([
+            'user_id' => $userId,
+            'order_id' => $orderId,
+            'type' => $type,
+            'quantity' => $quantity,
+            'stock_before' => $stockBefore,
+            'stock_after' => $this->stock,
+            'notes' => $notes,
+        ]);
+    }
 }
+
